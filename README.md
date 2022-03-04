@@ -53,3 +53,108 @@
 - 의도해서 하는 경우라기 보다 설정이 꼬여서 일어난 일일 확률이 높다.
   - 이런 게 잡기 힘든 어려운 버그가 됨
 - 스프링 부트에서 수동 빈 등록과 자동 빈 등록 충돌이 나면 오류가 발생하도록 기본 값을 변경
+
+
+## 다양한 의존관계 주입 방법
+
+- 생성자 주입
+- 수정자 주입 (setter)
+- 필드 주입
+- 일반 메서드 주입
+
+### 생성자 주입
+
+- 생성자 호출 시점에 딱 한 번만 호출되는 것을 보장
+- 불변, 필수 의존 관계에 적용
+- 생성자가 한 개만 있으면 @Autowired 애노테이션 생략 가능
+
+```java
+@Component
+public class OrderServiceImpl implements OrderService {
+
+  private final MemberRepository memberRepository;
+  private final DiscountPolicy discountPolicy;
+
+  @Autowired
+  public OrderServiceImpl(MemberRepository memberRepository, DiscountPolicy discountPolicy) {
+    this.memberRepository = memberRepository;
+    this.discountPolicy = discountPolicy;
+  }
+}
+```
+
+### 수정자 주입
+
+- 선택, 변경 가능성이 있는 의존관계에 적용
+- 자바빈 프로퍼티 규약의 수정자 메서드 방식을 사용
+
+```java
+@Component
+public class OrderServiceImpl implements OrderService {
+
+  private MemberRepository memberRepository;
+  private DiscountPolicy discountPolicy;
+
+  @Autowired
+  public void setMemberRepository(MemberRepository memberRepository) {
+    this.memberRepository = memberRepository;
+  }
+
+  @Autowired
+  public void setDiscountPolicy(DiscountPolicy discountPolicy) {
+    this.discountPolicy = discountPolicy;
+  }
+}
+```
+
+### 필드 주입
+
+- 사용 권장 XXXXXX
+  - 테스트 코드나 @Configuration 같은 곳에서만 사용
+- 간결해서 좋지만 외부에서 변경이 불가능해 테스트하기가 힘들다
+
+```java
+@Component
+public class OrderServiceImpl implements OrderService {
+
+    @Autowired
+    private MemberRepository memberRepository;
+    @Autowired
+    private DiscountPolicy discountPolicy;
+    
+}
+```
+
+### 일반 메서드 주입
+
+- 한 번에 여러 필드를 주입 받을 수 있다
+- 일반적으로 잘 사용하지 XXXX
+
+```java
+@Component
+public class OrderServiceImpl implements OrderService {
+
+  private MemberRepository memberRepository;
+  private DiscountPolicy discountPolicy;
+
+  @Autowired
+  public void init(MemberRepository memberRepository, DiscountPolicy discountPolicy) {
+    this.memberRepository = memberRepository;
+    this.discountPolicy = discountPolicy;
+  }
+}
+```
+
+## 자동, 수동의 올바른 실무 운영 기준
+
+### 편리한 자동 기능을 기본으로 사용하자
+
+애플리케이션은 업무 로직과 기술 지원 로직으로 나눌 수 있다
+- 업무 로직 빈 : 웹을 지원하는 컨트롤러, 서비스, 레파지토리 등이 업무 로직이다. 비즈니스 요구사항을 개발할 때 추가되거나 변경
+- 기술 지원 로직 빈 : 기술적인 문제나 공통 관심사(AOP)를 처리할 때 주로 사용. 데이터베이스 연결이나 공통 로그 처리같은 업무 로직을 지원하기 위한 하부기술, 공통 기술
+- 업무 로직은 어느정도 유사한 패턴이 있어 자동 빈 등록으로 사용해도 무관
+- 기술 지원 로직은 업무 로직에 비해 수가 적고, 앱 전반에 걸쳐 영향을 미친다. 업무 로직은 어디가 문제인지 명확하지만, 기술 지원 로직은 파악하기 어렵다. 이런 기술 지원 로직은 수동 빈 등록을 사용해서 명확하게 드러내는 게 좋다.
+
+### 비즈니스 로직 중 다형성을 활용할 때
+
+- 내가 한 추상화를 다른 개발자가 보면 이해할 수 없을 수도 있다. 이해하기 쉽게 특정 패키지에 같이 묶어둔다.
